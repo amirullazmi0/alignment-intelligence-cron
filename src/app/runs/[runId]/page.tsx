@@ -205,10 +205,28 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
                             {STATUS_LABEL[run.status]}
                         </span>
                     )}
+                    {run?.ministry === null && (
+                        <span className="badge badge-warning badge-soft badge-sm">general</span>
+                    )}
                     {run?.dryRun && (
                         <span className="badge badge-info badge-soft badge-sm">pratinjau</span>
                     )}
                 </div>
+                {/* Keyword menentukan apa yang dicari run ini, dan untuk run general ia
+                    satu-satunya pembatas cakupan. */}
+                {run && run.keywords.length > 0 && (
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <span className="text-xs opacity-60">keyword</span>
+                        {run.keywords.map((keyword) => (
+                            <span
+                                key={keyword}
+                                className="badge badge-outline badge-sm font-mono"
+                            >
+                                {keyword}
+                            </span>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {error && (

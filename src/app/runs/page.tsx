@@ -228,6 +228,11 @@ export default function RunsPage() {
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                     <p className="flex flex-wrap items-center gap-2 font-medium">
                                         {run.ministryLabel}
+                                        {run.ministry === null && (
+                                            <span className="badge badge-warning badge-soft badge-sm">
+                                                general
+                                            </span>
+                                        )}
                                         <span className="badge badge-ghost badge-sm">
                                             {run.trigger === 'CRON' ? 'terjadwal' : 'manual'}
                                         </span>
@@ -244,6 +249,20 @@ export default function RunsPage() {
                                         {STATUS_LABEL[run.status]}
                                     </span>
                                 </div>
+
+                                {run.keywords.length > 0 && (
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="text-xs opacity-60">keyword</span>
+                                        {run.keywords.map((keyword) => (
+                                            <span
+                                                key={keyword}
+                                                className="badge badge-outline badge-sm font-mono"
+                                            >
+                                                {keyword}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
 
                                 <p className="flex flex-wrap gap-x-2 font-mono text-xs opacity-60">
                                     <span className="whitespace-nowrap">
