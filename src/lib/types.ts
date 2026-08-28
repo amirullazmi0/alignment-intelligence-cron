@@ -40,7 +40,8 @@ export interface RunSummary {
 export interface Run {
     id: string;
     scheduleId: string | null;
-    ministry: string;
+    /** null berarti run general: seluruh JDIHN, dibatasi keyword saja. */
+    ministry: string | null;
     ministryLabel: string;
     keywords: string[];
     trigger: 'MANUAL' | 'CRON';
