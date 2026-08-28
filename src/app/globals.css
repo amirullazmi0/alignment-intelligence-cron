@@ -1,0 +1,33 @@
+@import 'tailwindcss';
+@plugin "daisyui" {
+    themes: business --default;
+}
+
+/* Panel log dibuat menyerupai terminal: font mono, latar gelap pekat, dan warna per
+   level yang tetap terbaca di atasnya. */
+.terminal {
+    background: #0b0f18;
+    color: #cbd5e1;
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+}
+
+.terminal-line {
+    padding-block: 1px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.terminal-line:hover {
+    background: rgb(148 163 184 / 0.07);
+}
+
+/* Kursor berkedip saat run masih berjalan, supaya terlihat hidup dan bukan macet. */
+@keyframes terminal-blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+}
+
+.terminal-cursor::after {
+    content: '▊';
+    animation: terminal-blink 1.1s step-end infinite;
+}

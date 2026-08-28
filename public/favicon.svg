@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>Alignment Intelligence</title>
+  <rect width="64" height="64" rx="14" fill="#112746"/>
+  <path d="M32 11 49 17v13c0 11.2-6.8 19.2-17 23-10.2-3.8-17-11.8-17-23V17l17-6Z" fill="none" stroke="#d3ad36" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M32 22v18M23 31h18" stroke="#d3ad36" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="32" cy="31" r="5" fill="#112746" stroke="#d3ad36" stroke-width="3"/>
+</svg>
