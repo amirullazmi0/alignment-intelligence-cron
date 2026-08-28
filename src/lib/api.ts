@@ -38,10 +38,6 @@ export interface Page<T> {
     totalPages: number;
 }
 
-export interface SchedulePage extends Page<Schedule> {
-    /** Semua kementerian yang sudah punya jadwal, lintas halaman. */
-    takenMinistries: string[];
-}
 
 /**
  * Samakan bentuk respons daftar berhalaman.
@@ -79,23 +75,16 @@ export const api = {
         page: number;
         limit: number;
         search: string;
-    }): Promise<SchedulePage> => {
+    }): Promise<Page<Schedule>> => {
         const query = new URLSearchParams({
             page: String(params.page),
             limit: String(params.limit),
         });
         if (params.search.trim()) query.set('search', params.search.trim());
-        const payload = await request<unknown>(`/v1/schedules?${query.toString()}`);
-        const page = toPage<Schedule>(payload, params.limit);
-        const taken = (payload as Partial<SchedulePage> | null)?.takenMinistries;
-        return {
-            ...page,
-            // Backend lama tidak mengirim daftar ini; jatuh ke kementerian yang tampil
-            // di halaman ini supaya dropdown tetap masuk akal.
-            takenMinistries: Array.isArray(taken)
-                ? taken
-                : page.items.map((schedule) => schedule.ministry),
-        };
+        return toPage<Schedule>(
+            await request<unknown>(`/v1/schedules?${query.toString()}`),
+            params.limit,
+        );
     },
     createSchedule: (body: Record<string, unknown>) =>
         request<Schedule>('/v1/schedules', { method: 'POST', body: JSON.stringify(body) }),

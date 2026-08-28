@@ -6,7 +6,8 @@ export interface MinistryOption {
 
 export interface Schedule {
     id: string;
-    ministry: string;
+    /** null berarti jadwal general: seluruh JDIHN, dibatasi keyword saja. */
+    ministry: string | null;
     ministryLabel: string;
     aliases: string[];
     keywords: string[];

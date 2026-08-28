@@ -33,6 +33,13 @@ const EMPTY_FORM: FormState = {
     dryRun: true,
 };
 
+/**
+ * Nilai pilihan "general" pada dropdown. Dikirim ke backend sebagai string kosong,
+ * yang di sana berarti jadwal tanpa kementerian: cakupannya seluruh JDIHN dan yang
+ * membatasi adalah keyword.
+ */
+const GENERAL = '__general__';
+
 const PAGE_SIZES = [5, 10, 20] as const;
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -40,7 +47,6 @@ export default function SchedulesPage() {
     const router = useRouter();
     const [ministries, setMinistries] = useState<MinistryOption[]>([]);
     const [schedules, setSchedules] = useState<Schedule[]>([]);
-    const [taken, setTaken] = useState<string[]>([]);
     const [total, setTotal] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
@@ -75,7 +81,6 @@ export default function SchedulesPage() {
             if (requestId !== latestRequest.current) return;
             setMinistries(ministryList);
             setSchedules(schedulePage.items);
-            setTaken(schedulePage.takenMinistries ?? []);
             setTotal(schedulePage.total);
             setTotalPages(schedulePage.totalPages);
             // Halaman terakhir bisa lenyap setelah penghapusan atau penyaringan.
@@ -110,7 +115,7 @@ export default function SchedulesPage() {
     function startEdit(schedule: Schedule): void {
         setEditingId(schedule.id);
         setForm({
-            ministry: schedule.ministry,
+            ministry: schedule.ministry ?? GENERAL,
             cron: parseCron(schedule.cronExpression),
             keywords: schedule.keywords.join(', '),
             documentLimit: schedule.documentLimit,
@@ -127,7 +132,7 @@ export default function SchedulesPage() {
     async function submit(event: React.SyntheticEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
         if (!form.ministry) {
-            setError('Pilih kementerian terlebih dahulu.');
+            setError('Pilih kementerian atau General terlebih dahulu.');
             return;
         }
         const cronExpression = buildCron(form.cron);
@@ -135,12 +140,19 @@ export default function SchedulesPage() {
             setError('Ekspresi cron tidak boleh kosong.');
             return;
         }
+        const keywords = form.keywords
+            .split(',')
+            .map((keyword) => keyword.trim())
+            .filter(Boolean);
+        // Jadwal general tanpa keyword akan menyusuri seluruh JDIHN tanpa batas apa pun.
+        // Backend menolaknya juga; dicegat di sini supaya pesannya muncul seketika.
+        if (isGeneral && keywords.length === 0) {
+            setError('Jadwal general wajib punya minimal satu keyword.');
+            return;
+        }
         const payload = {
             cronExpression,
-            keywords: form.keywords
-                .split(',')
-                .map((keyword) => keyword.trim())
-                .filter(Boolean),
+            keywords,
             documentLimit: form.documentLimit,
             dryRun: form.dryRun,
         };
@@ -150,7 +162,10 @@ export default function SchedulesPage() {
             if (editingId) {
                 await api.updateSchedule(editingId, payload);
             } else {
-                await api.createSchedule({ ...payload, ministry: form.ministry });
+                await api.createSchedule({
+                    ...payload,
+                    ministry: isGeneral ? '' : form.ministry,
+                });
             }
             cancelEdit();
             await refresh();
@@ -198,16 +213,9 @@ export default function SchedulesPage() {
         }
     }
 
-    // Satu kementerian hanya boleh punya satu jadwal, jadi yang sudah terpakai
-    // disembunyikan -- kecuali saat menyunting jadwal itu sendiri.
-    const available = ministries.filter(
-        (option) => option.value === form.ministry || !taken.includes(option.value),
-    );
-    // Begitu seluruh kementerian punya jadwal, dropdown menjadi kosong. Tanpa
-    // penjelasan, itu terbaca sebagai pemilih yang rusak dan bukan sebagai
-    // "memang tidak ada lagi yang bisa ditambahkan".
-    const allMinistriesScheduled =
-        !loading && editingId === null && ministries.length > 0 && available.length === 0;
+    // Seluruh kementerian selalu bisa dipilih: satu kementerian boleh punya beberapa
+    // jadwal dengan keyword atau frekuensi berbeda.
+    const isGeneral = form.ministry === GENERAL;
 
     return (
         <div className="space-y-6">
@@ -224,8 +232,12 @@ export default function SchedulesPage() {
                 </div>
             )}
 
-            <section className="card border border-base-content/10 bg-base-200">
-                <div className="card-body gap-4">
+            {/* Di layar lebar, form di kiri dan daftar di kanan: keduanya terlihat
+                bersamaan sehingga menyunting satu jadwal tidak menyembunyikan
+                sisanya. Di layar sempit keduanya kembali menumpuk. */}
+            <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+                <section className="card border border-base-content/10 bg-base-200 lg:sticky lg:top-4">
+                    <div className="card-body gap-4">
                     <h2 className="card-title text-base">
                         {editingId ? 'Ubah jadwal' : 'Tambah jadwal'}
                         {editingId && <span className="badge badge-primary badge-sm">edit</span>}
@@ -234,11 +246,10 @@ export default function SchedulesPage() {
                     <form className="space-y-4" onSubmit={submit}>
                         <label className="form-control w-full">
                             <span className="mb-1 flex flex-wrap items-center gap-x-2 text-sm font-medium">
-                                Kementerian
-                                {!loading && ministries.length > 0 && editingId === null && (
+                                Sasaran
+                                {!loading && ministries.length > 0 && (
                                     <span className="text-xs font-normal opacity-60">
-                                        {available.length} dari {ministries.length} belum
-                                        terjadwal
+                                        {ministries.length} kementerian, atau general
                                     </span>
                                 )}
                             </span>
@@ -253,28 +264,27 @@ export default function SchedulesPage() {
                                         setForm({ ...form, ministry: event.target.value })
                                     }
                                     className="select select-bordered w-full"
-                                    // Kementerian tidak bisa dipindah saat menyunting: itu
+                                    // Sasaran tidak bisa dipindah saat menyunting: itu
                                     // identitas jadwalnya. Hapus lalu buat baru kalau memang
                                     // perlu berpindah.
-                                    disabled={busy || editingId !== null || allMinistriesScheduled}
+                                    disabled={busy || editingId !== null}
                                 >
-                                    <option value="">
-                                        {allMinistriesScheduled
-                                            ? 'Tidak ada kementerian tersisa'
-                                            : 'Pilih kementerian'}
+                                    <option value="">Pilih sasaran</option>
+                                    <option value={GENERAL}>
+                                        General — semua kementerian
                                     </option>
-                                    {available.map((option) => (
+                                    {ministries.map((option) => (
                                         <option key={option.value} value={option.value}>
                                             {option.label}
                                         </option>
                                     ))}
                                 </select>
                             )}
-                            {allMinistriesScheduled && (
+                            {isGeneral && (
                                 <span className="mt-2 text-xs leading-5 opacity-70">
-                                    Seluruh {ministries.length} kementerian sudah punya jadwal,
-                                    jadi tidak ada lagi yang bisa ditambahkan. Ubah atau hapus
-                                    salah satu jadwal di bawah untuk menggantinya.
+                                    Menyusuri seluruh JDIHN tanpa menyaring instansi. Keyword di
+                                    bawah wajib diisi, karena itulah satu-satunya yang membatasi
+                                    cakupannya.
                                 </span>
                             )}
                         </label>
@@ -289,9 +299,9 @@ export default function SchedulesPage() {
 
                         <div className="divider my-0 text-xs opacity-60">Cakupan</div>
 
-                        <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
                             <label className="form-control w-full">
-                                <span className="label-text mb-1 text-sm font-medium">
+                                <span className="mb-1 text-sm font-medium">
                                     Batas dokumen per run
                                 </span>
                                 <NumberField
@@ -307,8 +317,8 @@ export default function SchedulesPage() {
                             </label>
 
                             <label className="form-control w-full">
-                                <span className="label-text mb-1 text-sm font-medium">
-                                    Keyword tambahan (opsional)
+                                <span className="mb-1 text-sm font-medium">
+                                    {isGeneral ? 'Keyword (wajib)' : 'Keyword tambahan (opsional)'}
                                 </span>
                                 <input
                                     value={form.keywords}
@@ -346,7 +356,7 @@ export default function SchedulesPage() {
                         <div className="flex gap-2">
                             <button
                                 type="submit"
-                                disabled={busy || loading || allMinistriesScheduled}
+                                disabled={busy || loading}
                                 className="btn btn-primary btn-sm"
                             >
                                 {busy && <span className="loading loading-spinner loading-xs" />}
@@ -373,10 +383,10 @@ export default function SchedulesPage() {
                             dokumen tingkat nasional lain menyusul sampai batas terpenuhi.
                         </span>
                     </div>
-                </div>
-            </section>
+                    </div>
+                </section>
 
-            <section className="space-y-3">
+                <section className="space-y-3">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <h2 className="text-sm font-semibold whitespace-nowrap">
                         Jadwal tersimpan <span className="opacity-60">({total})</span>
@@ -495,8 +505,9 @@ export default function SchedulesPage() {
                             </div>
                         </article>
                     ))}
-                </div>
-            </section>
+                    </div>
+                </section>
+            </div>
         </div>
     );
 }
