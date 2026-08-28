@@ -1,25 +1,33 @@
-const API_URL = process.env.COLLECTOR_API_URL ?? 'http://127.0.0.1:5003';
-const INTERNAL_TOKEN = process.env.COLLECTOR_INTERNAL_TOKEN ?? '';
+import { collectorApiUrl, collectorInternalToken } from '@/lib/env';
+import { currentUser } from '@/lib/session';
 
 /**
  * Penerus permintaan ke backend collector.
  *
- * Ada dua alasan permintaan tidak dikirim langsung dari browser. Pertama,
+ * Ada tiga alasan permintaan tidak dikirim langsung dari browser. Pertama,
  * `COLLECTOR_INTERNAL_TOKEN` disisipkan di sini sehingga tidak pernah sampai ke klien.
  * Kedua, respons diteruskan sebagai stream apa adanya, yang membuat SSE log tetap
- * mengalir baris demi baris alih-alih tertahan sampai run selesai.
+ * mengalir baris demi baris alih-alih tertahan sampai run selesai. Ketiga, di sinilah
+ * sesi benar-benar diperiksa: proxy hanya melihat ada tidaknya cookie, sedangkan token
+ * internal kolektor memberi kendali penuh atas pengumpulan dokumen.
  */
 async function proxy(request: Request, context: { params: Promise<{ path: string[] }> }) {
+    if (!(await currentUser())) {
+        return Response.json({ detail: 'Sesi tidak sah atau sudah berakhir.' }, { status: 401 });
+    }
+
+    const apiUrl = collectorApiUrl();
     const { path } = await context.params;
     const search = new URL(request.url).search;
-    const target = `${API_URL}/${path.join('/')}${search}`;
+    const target = `${apiUrl}/${path.join('/')}${search}`;
 
     const headers = new Headers();
     const contentType = request.headers.get('content-type');
     if (contentType) headers.set('content-type', contentType);
     const accept = request.headers.get('accept');
     if (accept) headers.set('accept', accept);
-    if (INTERNAL_TOKEN) headers.set('x-internal-token', INTERNAL_TOKEN);
+    const internalToken = collectorInternalToken();
+    if (internalToken) headers.set('x-internal-token', internalToken);
 
     const method = request.method;
     const body = method === 'GET' || method === 'HEAD' ? undefined : await request.arrayBuffer();
@@ -39,7 +47,7 @@ async function proxy(request: Request, context: { params: Promise<{ path: string
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Backend collector tidak dapat dihubungi';
         return Response.json(
-            { detail: `Backend collector tidak dapat dihubungi (${API_URL}). ${message}` },
+            { detail: `Backend collector tidak dapat dihubungi (${apiUrl}). ${message}` },
             { status: 502 },
         );
     }
