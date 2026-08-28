@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import CronPicker from '@/components/cron-picker';
 import NumberField from '@/components/number-field';
 import Pagination from '@/components/pagination';
+import { SkeletonCards } from '@/components/skeleton';
 import { api } from '@/lib/api';
 import { buildCron, describeCron, parseCron, DEFAULT_CRON_PARTS, type CronParts } from '@/lib/cron';
 import type { MinistryOption, Schedule } from '@/lib/types';
@@ -57,12 +58,21 @@ export default function SchedulesPage() {
     const [pageSize, setPageSize] = useState<number>(PAGE_SIZES[1]);
     const [page, setPage] = useState(1);
 
+    // Nomor permintaan terakhir. Paginasi dan pencarian dijalankan di server, jadi
+    // menekan ‹/› beruntun atau mengetik cepat meninggalkan beberapa permintaan
+    // berjalan sekaligus; tanpa penanda ini yang selesai belakangan akan menimpa
+    // yang lebih baru dan daftar menampilkan halaman yang bukan sedang ditunjuk.
+    const latestRequest = useRef(0);
+
     const refresh = useCallback(async () => {
+        const requestId = ++latestRequest.current;
+        setLoading(true);
         try {
             const [ministryList, schedulePage] = await Promise.all([
                 api.ministries(),
                 api.schedules({ page, limit: pageSize, search: appliedSearch }),
             ]);
+            if (requestId !== latestRequest.current) return;
             setMinistries(ministryList);
             setSchedules(schedulePage.items);
             setTaken(schedulePage.takenMinistries ?? []);
@@ -72,9 +82,12 @@ export default function SchedulesPage() {
             if (page > schedulePage.totalPages) setPage(schedulePage.totalPages);
             setError('');
         } catch (refreshError) {
-            setError(refreshError instanceof Error ? refreshError.message : 'Gagal memuat data');
+            if (requestId !== latestRequest.current) return;
+            setError(
+                refreshError instanceof Error ? refreshError.message : 'Gagal memuat data',
+            );
         } finally {
-            setLoading(false);
+            if (requestId === latestRequest.current) setLoading(false);
         }
     }, [page, pageSize, appliedSearch]);
 
@@ -190,6 +203,11 @@ export default function SchedulesPage() {
     const available = ministries.filter(
         (option) => option.value === form.ministry || !taken.includes(option.value),
     );
+    // Begitu seluruh kementerian punya jadwal, dropdown menjadi kosong. Tanpa
+    // penjelasan, itu terbaca sebagai pemilih yang rusak dan bukan sebagai
+    // "memang tidak ada lagi yang bisa ditambahkan".
+    const allMinistriesScheduled =
+        !loading && editingId === null && ministries.length > 0 && available.length === 0;
 
     return (
         <div className="space-y-6">
@@ -215,26 +233,50 @@ export default function SchedulesPage() {
 
                     <form className="space-y-4" onSubmit={submit}>
                         <label className="form-control w-full">
-                            <span className="label-text mb-1 text-sm font-medium">Kementerian</span>
-                            <select
-                                value={form.ministry}
-                                onChange={(event) =>
-                                    setForm({ ...form, ministry: event.target.value })
-                                }
-                                className="select select-bordered w-full"
-                                // Kementerian tidak bisa dipindah saat menyunting: itu identitas
-                                // jadwalnya. Hapus lalu buat baru kalau memang perlu berpindah.
-                                disabled={loading || busy || editingId !== null}
-                            >
-                                <option value="">
-                                    {loading ? 'Memuat...' : 'Pilih kementerian'}
-                                </option>
-                                {available.map((option) => (
-                                    <option key={option.value} value={option.value}>
-                                        {option.label}
+                            <span className="mb-1 flex flex-wrap items-center gap-x-2 text-sm font-medium">
+                                Kementerian
+                                {!loading && ministries.length > 0 && editingId === null && (
+                                    <span className="text-xs font-normal opacity-60">
+                                        {available.length} dari {ministries.length} belum
+                                        terjadwal
+                                    </span>
+                                )}
+                            </span>
+                            {/* Selama daftar kementerian belum tiba, tempatnya diisi
+                                skeleton setinggi select supaya form tidak bergeser. */}
+                            {loading ? (
+                                <span className="skeleton h-12 w-full" aria-hidden="true" />
+                            ) : (
+                                <select
+                                    value={form.ministry}
+                                    onChange={(event) =>
+                                        setForm({ ...form, ministry: event.target.value })
+                                    }
+                                    className="select select-bordered w-full"
+                                    // Kementerian tidak bisa dipindah saat menyunting: itu
+                                    // identitas jadwalnya. Hapus lalu buat baru kalau memang
+                                    // perlu berpindah.
+                                    disabled={busy || editingId !== null || allMinistriesScheduled}
+                                >
+                                    <option value="">
+                                        {allMinistriesScheduled
+                                            ? 'Tidak ada kementerian tersisa'
+                                            : 'Pilih kementerian'}
                                     </option>
-                                ))}
-                            </select>
+                                    {available.map((option) => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                            {allMinistriesScheduled && (
+                                <span className="mt-2 text-xs leading-5 opacity-70">
+                                    Seluruh {ministries.length} kementerian sudah punya jadwal,
+                                    jadi tidak ada lagi yang bisa ditambahkan. Ubah atau hapus
+                                    salah satu jadwal di bawah untuk menggantinya.
+                                </span>
+                            )}
                         </label>
 
                         <div className="divider my-0 text-xs opacity-60">Jadwal</div>
@@ -283,17 +325,20 @@ export default function SchedulesPage() {
                             </label>
                         </div>
 
-                        <label className="label cursor-pointer justify-start gap-3">
+                        {/* Kelas .label milik daisyUI memaksa white-space: nowrap, sehingga
+                            kalimat sepanjang ini mendorong seluruh halaman melebihi lebar
+                            layar kecil. Baris ini memakai flex biasa supaya teksnya wrap. */}
+                        <label className="flex cursor-pointer items-start gap-3">
                             <input
                                 type="checkbox"
                                 checked={form.dryRun}
                                 onChange={(event) =>
                                     setForm({ ...form, dryRun: event.target.checked })
                                 }
-                                className="toggle toggle-primary toggle-sm"
+                                className="toggle toggle-primary toggle-sm mt-0.5 shrink-0"
                                 disabled={busy}
                             />
-                            <span className="label-text text-sm">
+                            <span className="min-w-0 text-sm leading-5">
                                 Mode pratinjau — hanya mencari, tanpa mengunduh atau mengunggah
                             </span>
                         </label>
@@ -301,7 +346,7 @@ export default function SchedulesPage() {
                         <div className="flex gap-2">
                             <button
                                 type="submit"
-                                disabled={busy || loading}
+                                disabled={busy || loading || allMinistriesScheduled}
                                 className="btn btn-primary btn-sm"
                             >
                                 {busy && <span className="loading loading-spinner loading-xs" />}
@@ -363,11 +408,9 @@ export default function SchedulesPage() {
                     noun="jadwal"
                 />
 
-                {loading && (
-                    <div className="flex items-center gap-2 text-sm opacity-70">
-                        <span className="loading loading-spinner loading-sm" /> Memuat jadwal...
-                    </div>
-                )}
+                {/* Skeleton, bukan spinner: tinggi daftar tetap sama sehingga isi tidak
+                    melompat begitu datanya tiba. */}
+                {loading && <SkeletonCards rows={Math.min(pageSize, 6)} />}
 
                 {!loading && schedules.length === 0 && (
                     <div className="card border border-dashed border-base-content/20 bg-base-200">

@@ -3,6 +3,8 @@
 import { use, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 
+import { SkeletonBar } from '@/components/skeleton';
+
 import { api } from '@/lib/api';
 import type { LogLine, Run, RunStatus, RunSummary } from '@/lib/types';
 
@@ -190,9 +192,13 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
                     ← Riwayat run
                 </Link>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        {run?.ministryLabel ?? 'Memuat...'}
-                    </h1>
+                    {run ? (
+                        <h1 className="text-2xl font-semibold tracking-tight">
+                            {run.ministryLabel}
+                        </h1>
+                    ) : (
+                        <SkeletonBar width="w-64" className="h-8" />
+                    )}
                     {run && (
                         <span className={`badge ${STATUS_BADGE[run.status]} badge-sm`}>
                             {running && <span className="loading loading-spinner loading-xs" />}
@@ -214,6 +220,20 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
                 <div className="alert alert-error">
                     <span>{run.errorMessage}</span>
                 </div>
+            )}
+
+            {!run && !error && (
+                <section
+                    className="stats stats-vertical w-full border border-base-content/10 bg-base-200 sm:stats-horizontal"
+                    aria-hidden="true"
+                >
+                    {Array.from({ length: 5 }, (_, index) => (
+                        <div key={index} className="stat gap-2">
+                            <SkeletonBar width="w-24" />
+                            <SkeletonBar width="w-12" className="h-6" />
+                        </div>
+                    ))}
+                </section>
             )}
 
             {summary && (
@@ -248,7 +268,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
                             kolektor@jdihn — {lines.length} baris
                         </span>
                     </div>
-                    <label className="label cursor-pointer gap-2 py-0">
+                    <label className="flex cursor-pointer items-center gap-2 py-0">
                         <input
                             type="checkbox"
                             checked={autoScroll}
