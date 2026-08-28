@@ -2,13 +2,20 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import './globals.css';
 
+import { logoutAction } from '@/app/login/actions';
+import { currentUser } from '@/lib/session';
+
 export const metadata: Metadata = {
     title: 'Kolektor JDIHN',
     description: 'Penjadwalan dan pemantauan pengumpulan regulasi dari JDIHN',
     icons: { icon: '/favicon.svg' },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+// Sesi dibaca tiap permintaan, jadi kerangka halaman tidak boleh dirender statis.
+export const dynamic = 'force-dynamic';
+
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+    const user = await currentUser();
     return (
         // Tema dikunci di root, bukan mengikuti preferensi sistem, supaya panel log yang
         // gelap tidak pernah berdampingan dengan antarmuka terang.
@@ -19,14 +26,28 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                         <Link href="/" className="btn btn-ghost text-base font-semibold">
                             <span className="text-primary">▍</span> Kolektor JDIHN
                         </Link>
-                        <nav className="flex gap-1">
-                            <Link href="/" className="btn btn-ghost btn-sm">
-                                Jadwal
-                            </Link>
-                            <Link href="/runs" className="btn btn-ghost btn-sm">
-                                Riwayat
-                            </Link>
-                        </nav>
+                        {user && (
+                            <nav className="flex gap-1">
+                                <Link href="/" className="btn btn-ghost btn-sm">
+                                    Jadwal
+                                </Link>
+                                <Link href="/runs" className="btn btn-ghost btn-sm">
+                                    Riwayat
+                                </Link>
+                            </nav>
+                        )}
+                        {user && (
+                            <div className="ml-auto flex items-center gap-2">
+                                <span className="hidden text-xs opacity-70 sm:inline">
+                                    {user.email}
+                                </span>
+                                <form action={logoutAction}>
+                                    <button type="submit" className="btn btn-ghost btn-sm">
+                                        Keluar
+                                    </button>
+                                </form>
+                            </div>
+                        )}
                     </div>
                 </div>
                 <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
