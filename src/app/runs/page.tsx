@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 
 import Pagination from '@/components/pagination';
+import { SkeletonCards } from '@/components/skeleton';
 import { api } from '@/lib/api';
 import type { Run, RunStatus } from '@/lib/types';
 
@@ -39,22 +40,39 @@ export default function RunsPage() {
     const [error, setError] = useState('');
     const [live, setLive] = useState(false);
 
-    const refresh = useCallback(async () => {
-        try {
-            const result = await api.runs({ page, limit: pageSize });
-            setRuns(result.items);
-            setTotal(result.total);
-            setTotalPages(result.totalPages);
-            // Run yang selesai bisa menggeser isi halaman; jangan tertinggal di halaman
-            // yang sudah tidak ada.
-            if (page > result.totalPages) setPage(result.totalPages);
-            setError('');
-        } catch (refreshError) {
-            setError(refreshError instanceof Error ? refreshError.message : 'Gagal memuat riwayat');
-        } finally {
-            setLoading(false);
-        }
-    }, [page, pageSize]);
+    // Nomor permintaan terakhir. Paginasi ini server-side, jadi menekan ‹ atau ›
+    // beruntun meninggalkan beberapa permintaan berjalan sekaligus; tanpa penanda
+    // ini yang selesai belakangan akan menimpa yang lebih baru dan tabel
+    // menampilkan isi halaman yang bukan sedang ditunjuk.
+    const latestRequest = useRef(0);
+
+    const refresh = useCallback(
+        async (background = false) => {
+            const requestId = ++latestRequest.current;
+            if (!background) setLoading(true);
+            try {
+                const result = await api.runs({ page, limit: pageSize });
+                if (requestId !== latestRequest.current) return;
+                setRuns(result.items);
+                setTotal(result.total);
+                setTotalPages(result.totalPages);
+                // Run yang selesai bisa menggeser isi halaman; jangan tertinggal di
+                // halaman yang sudah tidak ada.
+                if (page > result.totalPages) setPage(result.totalPages);
+                setError('');
+            } catch (refreshError) {
+                if (requestId !== latestRequest.current) return;
+                setError(
+                    refreshError instanceof Error
+                        ? refreshError.message
+                        : 'Gagal memuat riwayat',
+                );
+            } finally {
+                if (requestId === latestRequest.current) setLoading(false);
+            }
+        },
+        [page, pageSize],
+    );
 
     useEffect(() => {
         // Pemuatan dibungkus fungsi async di dalam effect: React 19 melarang setState
@@ -110,7 +128,7 @@ export default function RunsPage() {
                             continue;
                         }
                         // `ready` hanya penanda sambungan terbuka, bukan perubahan data.
-                        if (event.type === 'status') void refresh();
+                        if (event.type === 'status') void refresh(true);
                     }
                 }
             } catch {
@@ -185,11 +203,9 @@ export default function RunsPage() {
                 noun="run"
             />
 
-            {loading && (
-                <div className="flex items-center gap-2 text-sm opacity-70">
-                    <span className="loading loading-spinner loading-sm" /> Memuat riwayat...
-                </div>
-            )}
+            {/* Skeleton, bukan spinner: tinggi daftar tetap sama sehingga isi tidak
+                melompat begitu datanya tiba. */}
+            {loading && <SkeletonCards rows={Math.min(pageSize, 6)} />}
 
             {!loading && runs.length === 0 && (
                 <div className="card border border-dashed border-base-content/20 bg-base-200">
