@@ -6,7 +6,13 @@ import Link from 'next/link';
 import { SkeletonBar } from '@/components/skeleton';
 
 import { api } from '@/lib/api';
-import type { LogLine, Run, RunStatus, RunSummary } from '@/lib/types';
+import {
+    SOURCE_LABELS,
+    type LogLine,
+    type Run,
+    type RunStatus,
+    type RunSummary,
+} from '@/lib/types';
 
 const MAX_RENDERED_LINES = 5000;
 const RECONNECT_DELAY_MS = 3000;
@@ -198,6 +204,9 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
                         </h1>
                     ) : (
                         <SkeletonBar width="w-64" className="h-8" />
+                    )}
+                    {run && (
+                        <span className="badge badge-outline">{SOURCE_LABELS[run.source]}</span>
                     )}
                     {run && (
                         <span className={`badge ${STATUS_BADGE[run.status]} badge-sm`}>

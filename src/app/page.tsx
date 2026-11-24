@@ -9,7 +9,7 @@ import Pagination from '@/components/pagination';
 import { SkeletonCards } from '@/components/skeleton';
 import { api } from '@/lib/api';
 import { buildCron, describeCron, parseCron, DEFAULT_CRON_PARTS, type CronParts } from '@/lib/cron';
-import type { MinistryOption, Schedule } from '@/lib/types';
+import { SOURCE_LABELS, type CollectorSource, type MinistryOption, type Schedule } from '@/lib/types';
 
 function formatDateTime(value: string | null): string {
     if (!value) return '—';
@@ -19,6 +19,7 @@ function formatDateTime(value: string | null): string {
 
 interface FormState {
     ministry: string;
+    source: CollectorSource;
     cron: CronParts;
     keywords: string;
     documentLimit: number;
@@ -27,6 +28,7 @@ interface FormState {
 
 const EMPTY_FORM: FormState = {
     ministry: '',
+    source: 'JDIHN',
     cron: DEFAULT_CRON_PARTS,
     keywords: '',
     documentLimit: 10,
@@ -116,6 +118,7 @@ export default function SchedulesPage() {
         setEditingId(schedule.id);
         setForm({
             ministry: schedule.ministry ?? GENERAL,
+            source: schedule.source,
             cron: parseCron(schedule.cronExpression),
             keywords: schedule.keywords.join(', '),
             documentLimit: schedule.documentLimit,
@@ -165,6 +168,7 @@ export default function SchedulesPage() {
                 await api.createSchedule({
                     ...payload,
                     ministry: isGeneral ? '' : form.ministry,
+                    source: form.source,
                 });
             }
             cancelEdit();
@@ -222,7 +226,7 @@ export default function SchedulesPage() {
             <section>
                 <h1 className="text-2xl font-semibold tracking-tight">Jadwal pengumpulan</h1>
                 <p className="mt-1 text-sm opacity-70">
-                    Atur kapan kolektor menyusuri JDIHN untuk tiap kementerian.
+                    Atur kapan kolektor menyusuri JDIHN atau pasal.id untuk tiap kementerian.
                 </p>
             </section>
 
@@ -282,9 +286,39 @@ export default function SchedulesPage() {
                             )}
                             {isGeneral && (
                                 <span className="mt-2 text-xs leading-5 opacity-70">
-                                    Menyusuri seluruh JDIHN tanpa menyaring instansi. Keyword di
+                                    Menyusuri seluruh sumber tanpa menyaring instansi. Keyword di
                                     bawah wajib diisi, karena itulah satu-satunya yang membatasi
                                     cakupannya.
+                                </span>
+                            )}
+                        </label>
+
+                        <label className="form-control w-full">
+                            <span className="mb-1 text-sm font-medium">Sumber</span>
+                            <select
+                                value={form.source}
+                                onChange={(event) =>
+                                    setForm({
+                                        ...form,
+                                        source: event.target.value as CollectorSource,
+                                    })
+                                }
+                                className="select select-bordered w-full"
+                                // Sama seperti sasaran: sumber adalah identitas jadwal.
+                                disabled={busy || editingId !== null}
+                            >
+                                <option value="JDIHN">JDIHN</option>
+                                <option value="PASAL_ID">
+                                    pasal.id — PDF dari situs resmi .go.id
+                                </option>
+                            </select>
+                            {form.source === 'PASAL_ID' && (
+                                <span className="mt-2 text-xs leading-5 opacity-70">
+                                    Kandidat dicari lewat API metadata pasal.id (butuh
+                                    PASAL_API_TOKEN di collector), lalu PDF-nya diunduh dari
+                                    situs sumbernya (peraturan.go.id, peraturan.bpk.go.id, atau
+                                    JDIH kementerian). Dokumen tanpa PDF di situs .go.id
+                                    dilewati.
                                 </span>
                             )}
                         </label>
@@ -377,8 +411,9 @@ export default function SchedulesPage() {
 
                     <div className="alert alert-warning alert-soft py-2 text-xs">
                         <span>
-                            JDIHN membatasi hasil pencarian sekitar 100 dokumen per keyword, jadi
-                            satu run mengumpulkan puluhan dokumen — bukan seluruh arsip sebuah
+                            JDIHN membatasi hasil pencarian sekitar 100 dokumen per keyword;
+                            pasal.id memberi 20 hasil per jenis peraturan per keyword. Satu run
+                            mengumpulkan puluhan dokumen — bukan seluruh arsip sebuah
                             kementerian. Dokumen milik kementerian terpilih diproses lebih dulu,
                             dokumen tingkat nasional lain menyusul sampai batas terpenuhi.
                         </span>
@@ -446,6 +481,9 @@ export default function SchedulesPage() {
                                 <div className="min-w-0 flex-1">
                                     <p className="flex flex-wrap items-center gap-2 font-medium">
                                         {schedule.ministryLabel}
+                                        <span className="badge badge-outline badge-sm">
+                                            {SOURCE_LABELS[schedule.source]}
+                                        </span>
                                         {!schedule.isActive && (
                                             <span className="badge badge-ghost badge-sm">
                                                 nonaktif

@@ -1,3 +1,11 @@
+/** JDIHN, atau PASAL_ID: API metadata pasal.id dengan PDF dari situs resmi .go.id. */
+export type CollectorSource = 'JDIHN' | 'PASAL_ID';
+
+export const SOURCE_LABELS: Record<CollectorSource, string> = {
+    JDIHN: 'JDIHN',
+    PASAL_ID: 'pasal.id',
+};
+
 export interface MinistryOption {
     value: string;
     label: string;
@@ -11,6 +19,7 @@ export interface Schedule {
     ministryLabel: string;
     aliases: string[];
     keywords: string[];
+    source: CollectorSource;
     cronExpression: string;
     timezone: string;
     documentLimit: number;
@@ -35,6 +44,7 @@ export interface RunSummary {
     failed: number;
     ministry: string | null;
     ministry_matched: number;
+    source?: CollectorSource;
 }
 
 export interface Run {
@@ -44,6 +54,7 @@ export interface Run {
     ministry: string | null;
     ministryLabel: string;
     keywords: string[];
+    source: CollectorSource;
     trigger: 'MANUAL' | 'CRON';
     status: RunStatus;
     dryRun: boolean;
