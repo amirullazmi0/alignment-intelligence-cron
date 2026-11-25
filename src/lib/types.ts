@@ -1,9 +1,13 @@
-/** JDIHN, atau PASAL_ID: API metadata pasal.id dengan PDF dari situs resmi .go.id. */
-export type CollectorSource = 'JDIHN' | 'PASAL_ID';
+/**
+ * JDIHN; PASAL_ID: API metadata pasal.id dengan PDF dari situs resmi .go.id;
+ * PERATURAN_GO_ID: katalog resmi peraturan.go.id, disusuri per jenis peraturan.
+ */
+export type CollectorSource = 'JDIHN' | 'PASAL_ID' | 'PERATURAN_GO_ID';
 
 export const SOURCE_LABELS: Record<CollectorSource, string> = {
     JDIHN: 'JDIHN',
     PASAL_ID: 'pasal.id',
+    PERATURAN_GO_ID: 'peraturan.go.id',
 };
 
 export interface MinistryOption {

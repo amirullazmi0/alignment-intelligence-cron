@@ -311,7 +311,19 @@ export default function SchedulesPage() {
                                 <option value="PASAL_ID">
                                     pasal.id — PDF dari situs resmi .go.id
                                 </option>
+                                <option value="PERATURAN_GO_ID">
+                                    peraturan.go.id — katalog resmi per jenis
+                                </option>
                             </select>
+                            {form.source === 'PERATURAN_GO_ID' && (
+                                <span className="mt-2 text-xs leading-5 opacity-70">
+                                    Katalog resmi peraturan.go.id disusuri halaman demi halaman,
+                                    tidak dicari per kata. Isi keyword dengan jenis yang disusuri:
+                                    uu, perppu, pp, perpres, permen, perda. Kosong atau kata lain
+                                    berarti uu, perppu, pp, perpres. Posisi terakhir disimpan, jadi
+                                    run berikutnya melanjutkan.
+                                </span>
+                            )}
                             {form.source === 'PASAL_ID' && (
                                 <span className="mt-2 text-xs leading-5 opacity-70">
                                     Kandidat dicari lewat API metadata pasal.id (butuh
