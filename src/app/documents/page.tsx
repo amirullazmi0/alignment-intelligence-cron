@@ -232,6 +232,21 @@ function Documents() {
                 )}
             </section>
 
+            {source === 'PERATURAN_GO_ID' && (
+                <div className="alert alert-info alert-soft text-sm">
+                    <span>
+                        Dokumen peraturan.go.id tidak lewat jadwal: seluruh katalognya
+                        disinkronkan otomatis dan teksnya dikirim ke Alignment tiap 5 menit.
+                        Lihat statusnya di{' '}
+                        <Link href="/catalog" className="link font-medium">
+                            Katalog peraturan.go.id
+                        </Link>
+                        . Di sini hanya muncul yang diambil lewat jadwal lama bersumber
+                        peraturan.go.id.
+                    </span>
+                </div>
+            )}
+
             <Pagination
                 page={page}
                 totalPages={totalPages}

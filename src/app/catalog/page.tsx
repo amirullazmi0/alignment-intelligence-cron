@@ -26,14 +26,14 @@ const JOBS: { job: CatalogJob; title: string; when: string; what: string }[] = [
     {
         job: 'refresh_details',
         title: 'Cek ulang status & relasi',
-        when: 'tiap jam, menit ke-15',
+        when: 'tiap 10 menit, 100 peraturan',
         what: 'Membuka halaman detail: status berlaku/dicabut, relasi, PDF. Perubahan dikirim ke Alignment.',
     },
     {
         job: 'ingest_text',
         title: 'Kirim teks ke Alignment',
-        when: 'tiap jam, menit ke-40',
-        what: 'Peraturan yang belum punya teks didaftarkan lewat tautan PDF resminya, UU lebih dulu.',
+        when: 'tiap 5 menit, mengisi antrean Alignment sampai 10',
+        what: 'Peraturan yang belum punya teks didaftarkan lewat tautan PDF resminya, UU lebih dulu. Antrean kosong langsung diisi lagi, jadi kecepatannya mengikuti Alignment.',
     },
     {
         job: 'sweep',
@@ -66,6 +66,7 @@ const COUNT_LABELS: Record<string, string> = {
     retry: 'dicoba lagi',
     failed: 'gagal',
     errors: 'galat',
+    queueBefore: 'antrean Alignment sebelumnya',
 };
 
 function formatDateTime(value: string | null | undefined): string {
