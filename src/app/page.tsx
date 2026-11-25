@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 import CronPicker from '@/components/cron-picker';
@@ -227,8 +228,21 @@ export default function SchedulesPage() {
                 <h1 className="text-2xl font-semibold tracking-tight">Jadwal pengumpulan</h1>
                 <p className="mt-1 text-sm opacity-70">
                     Atur kapan kolektor menyusuri JDIHN atau pasal.id untuk tiap kementerian.
+                    Klik &quot;Lihat data&quot; pada jadwal untuk melihat dokumen yang
+                    dikumpulkannya.
                 </p>
             </section>
+
+            <div className="alert alert-info alert-soft text-sm">
+                <span>
+                    peraturan.go.id tidak perlu jadwal lagi: seluruh katalognya disinkronkan
+                    otomatis tiap jam. Pantau di{' '}
+                    <Link href="/catalog" className="link font-medium">
+                        Katalog peraturan.go.id
+                    </Link>
+                    .
+                </span>
+            </div>
 
             {error && (
                 <div className="alert alert-error">
@@ -509,8 +523,11 @@ export default function SchedulesPage() {
                                     </p>
                                     <p className="mt-1 text-xs opacity-70">
                                         {describeCron(schedule.cronExpression)} · maks{' '}
-                                        {schedule.documentLimit} dokumen · berikutnya{' '}
-                                        {formatDateTime(schedule.nextRunAt)}
+                                        {schedule.documentLimit} dokumen
+                                    </p>
+                                    <p className="mt-1 text-xs opacity-70">
+                                        terakhir {formatDateTime(schedule.lastRunAt)} ·
+                                        berikutnya {formatDateTime(schedule.nextRunAt)}
                                     </p>
                                     {schedule.keywords.length > 0 && (
                                         <p className="mt-1 text-xs opacity-70">
@@ -519,6 +536,12 @@ export default function SchedulesPage() {
                                     )}
                                 </div>
                                 <div className="flex flex-wrap gap-2">
+                                    <Link
+                                        href={`/documents?scheduleId=${schedule.id}`}
+                                        className="btn btn-outline btn-xs"
+                                    >
+                                        Lihat data
+                                    </Link>
                                     <button
                                         type="button"
                                         onClick={() => void runNow(schedule)}

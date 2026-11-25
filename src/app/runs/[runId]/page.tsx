@@ -263,6 +263,22 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
                 </section>
             )}
 
+            {run && (
+                <div className="flex flex-wrap gap-2">
+                    <Link href={`/documents?runId=${run.id}`} className="btn btn-primary btn-sm">
+                        Lihat dokumen dari run ini
+                    </Link>
+                    {run.scheduleId && (
+                        <Link
+                            href={`/documents?scheduleId=${run.scheduleId}`}
+                            className="btn btn-outline btn-sm"
+                        >
+                            Semua data jadwal ini
+                        </Link>
+                    )}
+                </div>
+            )}
+
             {summary && (
                 <section className="stats stats-vertical w-full border border-base-content/10 bg-base-200 sm:stats-horizontal">
                     <Stat label="Kandidat" value={summary.discovered} />
