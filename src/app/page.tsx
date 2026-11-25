@@ -65,6 +65,7 @@ export default function SchedulesPage() {
     // tidak berubah menjadi satu permintaan.
     const [appliedSearch, setAppliedSearch] = useState('');
     const [pageSize, setPageSize] = useState<number>(PAGE_SIZES[1]);
+    const [sourceFilter, setSourceFilter] = useState<CollectorSource | ''>('');
     const [page, setPage] = useState(1);
 
     // Nomor permintaan terakhir. Paginasi dan pencarian dijalankan di server, jadi
@@ -79,7 +80,12 @@ export default function SchedulesPage() {
         try {
             const [ministryList, schedulePage] = await Promise.all([
                 api.ministries(),
-                api.schedules({ page, limit: pageSize, search: appliedSearch }),
+                api.schedules({
+                    page,
+                    limit: pageSize,
+                    search: appliedSearch,
+                    source: sourceFilter,
+                }),
             ]);
             if (requestId !== latestRequest.current) return;
             setMinistries(ministryList);
@@ -97,7 +103,7 @@ export default function SchedulesPage() {
         } finally {
             if (requestId === latestRequest.current) setLoading(false);
         }
-    }, [page, pageSize, appliedSearch]);
+    }, [page, pageSize, appliedSearch, sourceFilter]);
 
     useEffect(() => {
         // Pemuatan dibungkus fungsi async di dalam effect: React 19 melarang setState
@@ -452,6 +458,23 @@ export default function SchedulesPage() {
                     <h2 className="text-sm font-semibold whitespace-nowrap">
                         Jadwal tersimpan <span className="opacity-60">({total})</span>
                     </h2>
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                    <select
+                        value={sourceFilter}
+                        onChange={(event) => {
+                            setSourceFilter(event.target.value as CollectorSource | '');
+                            setPage(1);
+                        }}
+                        className="select select-bordered select-sm w-full sm:w-44"
+                        aria-label="Filter sumber"
+                    >
+                        <option value="">Semua sumber</option>
+                        {(Object.keys(SOURCE_LABELS) as CollectorSource[]).map((key) => (
+                            <option key={key} value={key}>
+                                {SOURCE_LABELS[key]}
+                            </option>
+                        ))}
+                    </select>
                     <label className="input input-bordered input-sm flex w-full items-center gap-2 sm:max-w-xs">
                         <span className="opacity-50">&#128269;</span>
                         <input
@@ -462,6 +485,7 @@ export default function SchedulesPage() {
                             className="grow bg-transparent outline-none"
                         />
                     </label>
+                    </div>
                 </div>
 
                 <Pagination

@@ -93,12 +93,14 @@ export const api = {
         page: number;
         limit: number;
         search: string;
+        source?: string;
     }): Promise<Page<Schedule>> => {
         const query = new URLSearchParams({
             page: String(params.page),
             limit: String(params.limit),
         });
         if (params.search.trim()) query.set('search', params.search.trim());
+        if (params.source) query.set('source', params.source);
         return toPage<Schedule>(
             await request<unknown>(`/v1/schedules?${query.toString()}`),
             params.limit,
