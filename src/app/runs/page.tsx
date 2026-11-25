@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Pagination from '@/components/pagination';
 import { SkeletonCards } from '@/components/skeleton';
 import { api } from '@/lib/api';
-import type { Run, RunStatus } from '@/lib/types';
+import { SOURCE_LABELS, type Run, type RunStatus } from '@/lib/types';
 
 const STATUS_LABEL: Record<RunStatus, string> = {
     QUEUED: 'Menunggu antrean',
@@ -228,6 +228,9 @@ export default function RunsPage() {
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                     <p className="flex flex-wrap items-center gap-2 font-medium">
                                         {run.ministryLabel}
+                                        <span className="badge badge-outline badge-sm">
+                                            {SOURCE_LABELS[run.source]}
+                                        </span>
                                         {run.ministry === null && (
                                             <span className="badge badge-warning badge-soft badge-sm">
                                                 general

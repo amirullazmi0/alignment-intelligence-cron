@@ -141,10 +141,11 @@ export async function signOut(): Promise<void> {
 /**
  * Pengguna sesi saat ini, atau null bila belum masuk.
  *
- * Token akses berumur pendek, jadi 401 dicoba sekali lagi dengan refresh token sebelum
- * dianggap kedaluwarsa. Tanpa itu pengguna terlempar ke halaman login setiap kali token
- * akses habis, padahal sesinya masih sah. Role diperiksa ulang oleh kolektor pada setiap
- * panggilan, sehingga akun yang haknya dicabut langsung kehilangan akses.
+ * Refresh token sengaja tidak dipakai di sini. Fungsi ini dipanggil dari server component,
+ * yang tidak boleh menulis cookie, sementara Nest merotasi refresh token pada setiap
+ * refresh: token baru yang gagal disimpan membuat sesi putus. Pembaruan token akses
+ * dikerjakan `proxy.ts` sebelum permintaan sampai ke sini. Role diperiksa ulang oleh
+ * kolektor pada setiap panggilan, sehingga akun yang haknya dicabut langsung kehilangan akses.
  */
 export async function currentUser(): Promise<SessionUser | null> {
     const store = await cookies();
@@ -155,22 +156,5 @@ export async function currentUser(): Promise<SessionUser | null> {
         headers: { authorization: `Bearer ${accessToken}` },
     }).catch(() => null);
 
-    if (me?.ok) return readUser(await me.json());
-    // 403 berarti sesinya sah tetapi bukan admin lagi; refresh tidak akan menolong.
-    if (me && me.status !== 401) return null;
-
-    const refreshToken = store.get(REFRESH_COOKIE_NAME)?.value;
-    if (!refreshToken) return null;
-
-    const refreshed = await collector('/v1/auth/refresh', {
-        method: 'POST',
-        body: JSON.stringify({ refreshToken }),
-    }).catch(() => null);
-    if (!refreshed?.ok) return null;
-
-    const payload: unknown = await refreshed.json();
-    if (!isLoginResponse(payload)) return null;
-    store.set(SESSION_COOKIE_NAME, payload.accessToken, cookieOptions());
-    store.set(REFRESH_COOKIE_NAME, payload.refreshToken, cookieOptions());
-    return payload.user;
+    return me?.ok ? readUser(await me.json()) : null;
 }

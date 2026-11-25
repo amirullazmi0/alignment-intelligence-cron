@@ -6,7 +6,13 @@ import Link from 'next/link';
 import { SkeletonBar } from '@/components/skeleton';
 
 import { api } from '@/lib/api';
-import type { LogLine, Run, RunStatus, RunSummary } from '@/lib/types';
+import {
+    SOURCE_LABELS,
+    type LogLine,
+    type Run,
+    type RunStatus,
+    type RunSummary,
+} from '@/lib/types';
 
 const MAX_RENDERED_LINES = 5000;
 const RECONNECT_DELAY_MS = 3000;
@@ -200,6 +206,9 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
                         <SkeletonBar width="w-64" className="h-8" />
                     )}
                     {run && (
+                        <span className="badge badge-outline">{SOURCE_LABELS[run.source]}</span>
+                    )}
+                    {run && (
                         <span className={`badge ${STATUS_BADGE[run.status]} badge-sm`}>
                             {running && <span className="loading loading-spinner loading-xs" />}
                             {STATUS_LABEL[run.status]}
@@ -252,6 +261,22 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
                         </div>
                     ))}
                 </section>
+            )}
+
+            {run && (
+                <div className="flex flex-wrap gap-2">
+                    <Link href={`/documents?runId=${run.id}`} className="btn btn-primary btn-sm">
+                        Lihat dokumen dari run ini
+                    </Link>
+                    {run.scheduleId && (
+                        <Link
+                            href={`/documents?scheduleId=${run.scheduleId}`}
+                            className="btn btn-outline btn-sm"
+                        >
+                            Semua data jadwal ini
+                        </Link>
+                    )}
+                </div>
             )}
 
             {summary && (

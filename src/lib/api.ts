@@ -1,4 +1,13 @@
-import type { LogLine, MinistryOption, Run, Schedule } from './types';
+import type {
+    CatalogJob,
+    CatalogStats,
+    CollectedDocument,
+    LogLine,
+    MinistryOption,
+    Regulation,
+    Run,
+    Schedule,
+} from './types';
 
 /**
  * Klien API yang dipakai dari browser.
@@ -69,6 +78,15 @@ function toPage<T>(payload: unknown, fallbackLimit: number): Page<T> {
     };
 }
 
+/** Query string tanpa nilai kosong. */
+function queryOf(params: Record<string, string | number | undefined>): string {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== '') query.set(key, String(value));
+    }
+    return query.toString();
+}
+
 export const api = {
     ministries: async () => (await request<MinistryOption[]>('/v1/ministries')) ?? [],
     schedules: async (params: {
@@ -102,4 +120,25 @@ export const api = {
             params.limit,
         ),
     run: (id: string) => request<{ run: Run; lines: LogLine[] }>(`/v1/runs/${id}`),
+    documents: async (params: Record<string, string | number | undefined>) =>
+        toPage<CollectedDocument>(
+            await request<unknown>(`/v1/documents?${queryOf(params)}`),
+            Number(params.limit ?? 20),
+        ),
+    documentStats: () => request<Record<string, number>>('/v1/documents/stats'),
+    schedule: async (id: string): Promise<Schedule | null> => {
+        // Tidak ada endpoint satu jadwal; cari di daftar (jumlahnya puluhan).
+        const page = await api.schedules({ page: 1, limit: 100, search: '' });
+        return page.items.find((item) => item.id === id) ?? null;
+    },
+    regulations: async (params: Record<string, string | number | undefined>) =>
+        toPage<Regulation>(
+            await request<unknown>(`/v1/regulations?${queryOf(params)}`),
+            Number(params.limit ?? 20),
+        ),
+    catalogStats: () => request<CatalogStats>('/v1/regulations/stats'),
+    runCatalogJob: (job: CatalogJob) =>
+        request<{ job: string; queued: boolean; busy: boolean }>(`/v1/regulations/sync/${job}`, {
+            method: 'POST',
+        }),
 };

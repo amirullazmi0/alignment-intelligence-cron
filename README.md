@@ -1,8 +1,8 @@
 # Alignment Intelligence Cron
 
-Dashboard penjadwalan dan pemantauan kolektor regulasi JDIHN. Aplikasi ini hanya
+Dashboard penjadwalan dan pemantauan kolektor regulasi JDIHN dan pasal.id. Aplikasi ini hanya
 antarmuka; seluruh pekerjaan dilakukan oleh backend collector
-(`alignment-intelligence-collector`), yang menyusuri JDIHN, mengunduh PDF, dan
+(`alignment-intelligence-collector`), yang menyusuri JDIHN atau pasal.id, mengunduh PDF, dan
 mengunggahnya ke Knowledge Library.
 
 ## Menjalankan
